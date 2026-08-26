@@ -1,0 +1,62 @@
+{
+  "name": "AI Affiliate Factory - Performance Sync",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] } },
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.BACKEND_BASE_URL}}/api/videos?status=published",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "name": "Get Published Videos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {
+        "notes": "Replace with actual calls to each platform's analytics API (TikTok, YouTube Shorts, etc) and each affiliate platform's order/commission API (e.g. Lynk.id). This node is a placeholder - wire in real credentials per platform."
+      },
+      "name": "Fetch Platform Metrics (placeholder)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_BASE_URL}}/api/n8n/webhook/performance-sync",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-n8n-token", "value": "={{$env.N8N_WEBHOOK_TOKEN}}" }] },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "videoId", "value": "={{$json.videoId}}" },
+            { "name": "date", "value": "={{$today.format('yyyy-MM-dd')}}" },
+            { "name": "views", "value": "={{$json.views}}" },
+            { "name": "clicks", "value": "={{$json.clicks}}" },
+            { "name": "orders", "value": "={{$json.orders}}" },
+            { "name": "commission", "value": "={{$json.commission}}" }
+          ]
+        }
+      },
+      "name": "Report Metrics to Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, 0]
+    }
+  ],
+  "connections": {
+    "Every 6 Hours": { "main": [[{ "node": "Get Published Videos", "type": "main", "index": 0 }]] },
+    "Get Published Videos": { "main": [[{ "node": "Fetch Platform Metrics (placeholder)", "type": "main", "index": 0 }]] },
+    "Fetch Platform Metrics (placeholder)": { "main": [[{ "node": "Report Metrics to Backend", "type": "main", "index": 0 }]] }
+  },
+  "_note": "Set env vars BACKEND_BASE_URL and N8N_WEBHOOK_TOKEN (must match .env on backend). The 'placeholder' node must be replaced with real per-platform API calls."
+}

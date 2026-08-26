@@ -1,0 +1,137 @@
+{
+  "name": "AI Affiliate Factory - Daily Content Pipeline",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 9 * * *" }] } },
+      "name": "Every Day 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_BASE_URL}}/api/products/hunt",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": { "parameters": [{ "name": "count", "value": "5" }] }
+      },
+      "name": "Hunt New Products",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.BACKEND_BASE_URL}}/api/products/ranking?limit=1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "name": "Get Top Product",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_BASE_URL}}/api/videos/pipeline/trends",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": { "parameters": [{ "name": "productId", "value": "={{$json.id}}" }] }
+      },
+      "name": "Hunt Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_BASE_URL}}/api/videos/pipeline/scripts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "productId", "value": "={{$json.productId}}" },
+            { "name": "angle", "value": "={{$json.angles[0]}}" },
+            { "name": "variantCount", "value": "3" }
+          ]
+        }
+      },
+      "name": "Write Scripts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_BASE_URL}}/api/videos/pipeline/critique-script",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": { "parameters": [{ "name": "scriptId", "value": "={{$json.scripts[0].id}}" }] }
+      },
+      "name": "Critique Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 0]
+    },
+    {
+      "parameters": { "conditions": { "string": [{ "value1": "={{$json.status}}", "value2": "approved" }] } },
+      "name": "If Approved",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_BASE_URL}}/api/videos/pipeline/generate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "scriptId", "value": "={{$json.scriptId}}" },
+            { "name": "platform", "value": "tiktok" }
+          ]
+        }
+      },
+      "name": "Generate Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1820, -80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_BASE_URL}}/api/videos/pipeline/critique-video",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": { "parameters": [{ "name": "videoId", "value": "={{$json.videoId}}" }] }
+      },
+      "name": "Critique Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2080, -80]
+    }
+  ],
+  "connections": {
+    "Every Day 09:00": { "main": [[{ "node": "Hunt New Products", "type": "main", "index": 0 }]] },
+    "Hunt New Products": { "main": [[{ "node": "Get Top Product", "type": "main", "index": 0 }]] },
+    "Get Top Product": { "main": [[{ "node": "Hunt Trends", "type": "main", "index": 0 }]] },
+    "Hunt Trends": { "main": [[{ "node": "Write Scripts", "type": "main", "index": 0 }]] },
+    "Write Scripts": { "main": [[{ "node": "Critique Script", "type": "main", "index": 0 }]] },
+    "Critique Script": { "main": [[{ "node": "If Approved", "type": "main", "index": 0 }]] },
+    "If Approved": { "main": [[{ "node": "Generate Video", "type": "main", "index": 0 }], []] },
+    "Generate Video": { "main": [[{ "node": "Critique Video", "type": "main", "index": 0 }]] }
+  },
+  "_note": "Set env var BACKEND_BASE_URL (e.g. http://localhost:4000) and configure httpHeaderAuth credential with an Authorization: Bearer <JWT> header before activating. Keep this workflow's own concurrency at 1 to match backend queue limits."
+}

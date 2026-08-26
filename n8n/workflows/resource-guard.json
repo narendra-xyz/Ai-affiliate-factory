@@ -1,0 +1,50 @@
+{
+  "name": "AI Affiliate Factory - Resource Guard",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 5 }] } },
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.BACKEND_BASE_URL}}/api/system/status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "name": "Get System Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [{ "value1": "={{$json.resources.ramUsedMb}}", "operation": "larger", "value2": "={{$json.resources.ramHardLimitMb}}" }]
+        }
+      },
+      "name": "If Over Hard Limit",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "notes": "Wire this to a Telegram/WhatsApp/Email node with your own credentials to alert the operator that RAM usage is above the hard limit."
+      },
+      "name": "Alert Operator (placeholder)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [780, -80]
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": { "main": [[{ "node": "Get System Status", "type": "main", "index": 0 }]] },
+    "Get System Status": { "main": [[{ "node": "If Over Hard Limit", "type": "main", "index": 0 }]] },
+    "If Over Hard Limit": { "main": [[{ "node": "Alert Operator (placeholder)", "type": "main", "index": 0 }], []] }
+  },
+  "_note": "The backend already self-throttles the job queues when RAM is high (see queue.service.js). This workflow is an additional operator alert layer, not required for the backend to stay stable."
+}
