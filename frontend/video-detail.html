@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detail Video - AI Affiliate Factory</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="layout" id="app-shell"></div>
+
+<template id="tpl-content">
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header"><h2>Informasi Video</h2></div>
+      <div id="thumb-wrap" style="margin-bottom:12px;"></div>
+      <table>
+        <tr><td>Judul</td><td id="v-title">-</td></tr>
+        <tr><td>Produk</td><td id="v-product">-</td></tr>
+        <tr><td>Agent</td><td id="v-agent">-</td></tr>
+        <tr><td>Platform</td><td id="v-platform">-</td></tr>
+        <tr><td>Status</td><td id="v-status">-</td></tr>
+        <tr><td>Rating Critic</td><td id="v-rating">-</td></tr>
+        <tr><td>Basis Evaluasi Critic</td><td id="v-eval-basis">-</td></tr>
+        <tr><td>Saran Revisi</td><td id="v-suggested-revision">-</td></tr>
+        <tr><td>Durasi</td><td id="v-duration">-</td></tr>
+        <tr><td>Status Penyimpanan</td><td id="v-storage-status">-</td></tr>
+        <tr><td>Commission</td><td id="v-commission">-</td></tr>
+        <tr><td>Sumber Data Performa</td><td id="v-metrics-source">-</td></tr>
+        <tr><td>Biaya AI (langsung)</td><td id="v-aicost">-</td></tr>
+        <tr><td>Profit</td><td id="v-profit">-</td></tr>
+        <tr><td>Dibuat</td><td id="v-created">-</td></tr>
+        <tr><td>Alasan Gagal</td><td id="v-fail">-</td></tr>
+      </table>
+      <button class="btn" id="retry-btn" style="margin-top:12px;display:none;" onclick="retry()">
+        <i data-lucide="rotate-ccw"></i> Retry Video
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>Script</h2></div>
+      <table>
+        <tr><td>Hook</td><td id="s-hook">-</td></tr>
+        <tr><td>Body</td><td id="s-body">-</td></tr>
+        <tr><td>CTA</td><td id="s-cta">-</td></tr>
+        <tr><td>Critic Score</td><td id="s-score">-</td></tr>
+        <tr><td>Critic Feedback</td><td id="s-feedback">-</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <div class="card-header">
+      <h2>TikTok Publishing</h2>
+      <button class="btn" id="publish-tiktok-btn" style="display:none;" onclick="openPublishModal()">
+        <i data-lucide="send"></i> Publish to TikTok
+      </button>
+    </div>
+    <div id="tiktok-status-wrap">
+      <p style="color:var(--text-muted);">Memuat status...</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <div class="card-header">
+      <h2>TikTok Shop - Shoppable Video</h2>
+      <button class="btn" id="publish-shop-btn" style="display:none;" onclick="openShopPublishModal()">
+        <i data-lucide="shopping-bag"></i> Publish as Shoppable Video
+      </button>
+    </div>
+    <div id="shop-status-wrap">
+      <p style="color:var(--text-muted);">Memuat status...</p>
+    </div>
+  </div>
+</template>
+
+<div class="modal-backdrop" id="publish-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Publish to TikTok</h3>
+      <button class="modal-close" onclick="closePublishModal()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="field">
+      <label>Caption</label>
+      <textarea id="pm-caption" rows="4"></textarea>
+    </div>
+    <p class="card-sub" style="margin-bottom:12px;">
+      Video akan dikirim ke akun autopilot yang sudah diset di Settings > TikTok.
+      Privasi default SELF_ONLY kecuali app sudah di-approve TikTok untuk publish publik.
+    </p>
+    <button class="btn" style="width:100%;justify-content:center;" onclick="submitPublish()">
+      <i data-lucide="send"></i> Kirim ke TikTok
+    </button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="shop-publish-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Publish as Shoppable Video</h3>
+      <button class="modal-close" onclick="closeShopPublishModal()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="field">
+      <label>Produk TikTok Shop</label>
+      <input id="spm-product-id" placeholder="TikTok Shop product_id" readonly>
+      <p class="card-sub" style="margin-top:4px;" id="spm-product-hint"></p>
+    </div>
+    <div class="field">
+      <label>Caption</label>
+      <textarea id="spm-caption" rows="4"></textarea>
+    </div>
+    <p class="card-sub" style="margin-bottom:12px;">
+      Produk anchor/keranjang produk akan muncul di video jika akun, produk, permission, dan API
+      TikTok mengizinkannya. Status video dan status attachment produk dilacak terpisah.
+    </p>
+    <button class="btn" style="width:100%;justify-content:center;" onclick="submitShopPublish()">
+      <i data-lucide="shopping-bag"></i> Kirim sebagai Shoppable Video
+    </button>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+  mountShell('/videos.html', 'Detail Video', 'Rincian lengkap satu video affiliate');
+  document.getElementById('page-content').appendChild(document.getElementById('tpl-content').content.cloneNode(true));
+
+  const videoId = new URLSearchParams(window.location.search).get('id');
+
+  function badge(status) {
+    return `<span class="badge badge-${status}"><span class="badge-dot"></span>${status.replace(/_/g, ' ')}</span>`;
+  }
+
+  async function retry() {
+    try {
+      await apiFetch(`/videos/${videoId}/retry`, { method: 'POST' });
+      showToast('Video di-retry');
+      load();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function load() {
+    if (!videoId) { showToast('ID video tidak ditemukan', 'error'); return; }
+    try {
+      const v = await apiFetch(`/videos/${videoId}`);
+      if (!v) return;
+
+      document.getElementById('thumb-wrap').innerHTML = v.file_path
+        ? `<video src="${v.file_path}" controls poster="${v.thumbnail_path || ''}" style="width:100%;border-radius:8px;background:#000;"></video>`
+        : v.thumbnail_path
+        ? `<img src="${v.thumbnail_path}" style="width:100%;border-radius:8px;">`
+        : `<div style="width:100%;height:160px;border-radius:8px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--text-muted);"><i data-lucide="clapperboard"></i></div>`;
+
+      document.getElementById('v-title').textContent = v.title || '(untitled)';
+      document.getElementById('v-product').textContent = v.product_id ?? '-';
+      document.getElementById('v-agent').textContent = v.agent_name || '-';
+      document.getElementById('v-platform').textContent = v.platform || '-';
+      document.getElementById('v-status').innerHTML = badge(v.status);
+      document.getElementById('v-rating').textContent = v.critic_rating ?? '-';
+      document.getElementById('v-eval-basis').textContent = v.critic_evaluation_basis === 'video_frames'
+        ? 'Frame video asli' : v.critic_evaluation_basis === 'metadata_and_script'
+        ? 'Metadata + script saja (video belum/tidak bisa dilihat langsung)' : '-';
+      document.getElementById('v-suggested-revision').textContent = v.critic_suggested_revision || '-';
+      document.getElementById('v-duration').textContent = v.duration_seconds ? `${v.duration_seconds}s` : '-';
+      document.getElementById('v-storage-status').textContent = {
+        not_rendered: 'Belum di-render', local_temp: 'Temporary (belum final)',
+        local_permanent: 'Disk lokal VPS (permanen)', remote_object_storage: 'Object storage',
+        purged_local: 'Sudah dihapus (retensi disk) - metadata tetap tersimpan',
+      }[v.storage_status] || v.storage_status || '-';
+      document.getElementById('v-commission').textContent = formatIDR(v.commission);
+      document.getElementById('v-metrics-source').innerHTML = {
+        platform_sync: '<span class="badge badge-active"><span class="badge-dot"></span>Real (sinkron platform)</span>',
+        manual: '<span class="badge badge-idle"><span class="badge-dot"></span>Manual (input operator)</span>',
+        mixed: '<span class="badge badge-processing"><span class="badge-dot"></span>Campuran (real + manual)</span>',
+        unavailable: '<span class="badge badge-idle"><span class="badge-dot"></span>Belum ada data</span>',
+      }[v.metricsSource] || '-';
+      document.getElementById('v-aicost').textContent = formatIDR(v.ai_cost);
+      document.getElementById('v-profit').innerHTML = `<span style="color:${v.profit >= 0 ? 'var(--success)' : 'var(--danger)'};">${formatIDR(v.profit)}</span>`;
+      document.getElementById('v-created').textContent = v.created_at || '-';
+      document.getElementById('v-fail').textContent = v.fail_reason || '-';
+
+      document.getElementById('retry-btn').style.display = v.status === 'failed' ? 'inline-flex' : 'none';
+
+      currentVideoStatus = v.status;
+      currentVideoTitle = v.title || '';
+      currentVideoProductId = v.product_id || null;
+      const canPublish = ['approved', 'ready_to_publish'].includes(v.status) && v.file_path;
+      document.getElementById('publish-tiktok-btn').style.display = canPublish ? 'inline-flex' : 'none';
+      document.getElementById('publish-shop-btn').style.display = canPublish ? 'inline-flex' : 'none';
+
+      if (v.script) {
+        document.getElementById('s-hook').textContent = v.script.hook || '-';
+        document.getElementById('s-body').textContent = v.script.body || '-';
+        document.getElementById('s-cta').textContent = v.script.cta || '-';
+        document.getElementById('s-score').textContent = v.script.critic_score ?? '-';
+        document.getElementById('s-feedback').textContent = v.script.critic_feedback || '-';
+      }
+      lucide.createIcons();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // ---- TikTok publishing ----
+  let currentVideoStatus = null;
+  let currentVideoTitle = '';
+  let currentVideoProductId = null;
+  let tiktokPollTimer = null;
+
+  function openPublishModal() {
+    document.getElementById('pm-caption').value = currentVideoTitle;
+    document.getElementById('publish-modal').classList.add('open');
+    lucide.createIcons();
+  }
+  function closePublishModal() {
+    document.getElementById('publish-modal').classList.remove('open');
+  }
+
+  async function submitPublish() {
+    const caption = document.getElementById('pm-caption').value;
+    try {
+      await apiFetch('/tiktok/publish', {
+        method: 'POST',
+        body: JSON.stringify({ videoId: Number(videoId), caption }),
+      });
+      showToast('Video dikirim ke antrian publish TikTok');
+      closePublishModal();
+      loadTikTokStatus();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  function tiktokStatusBadge(status) {
+    const map = { queued: 'idle', uploading: 'processing', processing: 'processing', published: 'active', failed: 'error' };
+    return `<span class="badge badge-${map[status] || 'idle'}"><span class="badge-dot"></span>${status}</span>`;
+  }
+
+  async function loadTikTokStatus() {
+    try {
+      const pub = await apiFetch(`/tiktok/publishes/video/${videoId}`);
+      const wrap = document.getElementById('tiktok-status-wrap');
+
+      if (!pub) {
+        wrap.innerHTML = `<p style="color:var(--text-muted);">Belum pernah dikirim ke TikTok.</p>`;
+        stopTikTokPolling();
+        return;
+      }
+
+      wrap.innerHTML = `
+        <table>
+          <tr><td>Status</td><td>${tiktokStatusBadge(pub.status)}</td></tr>
+          <tr><td>Akun</td><td>${pub.account_username || '-'}</td></tr>
+          <tr><td>Caption</td><td>${pub.caption || '-'}</td></tr>
+          <tr><td>TikTok Post ID</td><td>${pub.tiktok_post_id || '-'}</td></tr>
+          <tr><td>Waktu Publish</td><td>${pub.published_at || '-'}</td></tr>
+          ${pub.status === 'failed' ? `<tr><td>Error</td><td style="color:var(--danger);">${pub.error_message || '-'}</td></tr>` : ''}
+        </table>
+      `;
+
+      if (pub.status === 'queued' || pub.status === 'uploading' || pub.status === 'processing') {
+        ensureTikTokPolling();
+      } else {
+        stopTikTokPolling();
+      }
+    } catch (err) {
+      // non-fatal - TikTok might not be configured at all, page still works
+      document.getElementById('tiktok-status-wrap').innerHTML =
+        `<p style="color:var(--text-muted);">Status TikTok tidak tersedia (integrasi belum dikonfigurasi atau belum ada percobaan publish).</p>`;
+    }
+  }
+
+  function ensureTikTokPolling() {
+    if (tiktokPollTimer) return;
+    tiktokPollTimer = setInterval(loadTikTokStatus, 5000);
+  }
+  function stopTikTokPolling() {
+    if (tiktokPollTimer) { clearInterval(tiktokPollTimer); tiktokPollTimer = null; }
+  }
+
+  // ---- TikTok Shop shoppable video publishing (separate flow/tracking
+  // from plain TikTok publishing above - video status and product
+  // attachment status are always shown separately, never merged) ----
+  let shopPollTimer = null;
+
+  async function openShopPublishModal() {
+    document.getElementById('spm-caption').value = currentVideoTitle;
+    document.getElementById('spm-product-id').value = 'Memuat...';
+    document.getElementById('spm-product-hint').textContent = '';
+
+    if (currentVideoProductId) {
+      try {
+        const product = await apiFetch(`/products/${currentVideoProductId}`);
+        if (product?.tiktok_shop_product_id) {
+          document.getElementById('spm-product-id').value = product.tiktok_shop_product_id;
+          document.getElementById('spm-product-hint').textContent = `Dari produk: ${product.name}`;
+        } else {
+          document.getElementById('spm-product-id').value = '';
+          document.getElementById('spm-product-hint').innerHTML =
+            `<span style="color:var(--danger);">Produk ini belum di-mapping ke TikTok Shop product_id. ` +
+            `Hubungkan dulu di <a href="/product-detail.html?id=${currentVideoProductId}" style="color:var(--accent);">halaman produk</a>.</span>`;
+        }
+      } catch (err) {
+        document.getElementById('spm-product-id').value = '';
+        document.getElementById('spm-product-hint').textContent = 'Gagal memuat info produk.';
+      }
+    } else {
+      document.getElementById('spm-product-id').value = '';
+      document.getElementById('spm-product-hint').textContent = 'Video ini tidak terhubung ke produk manapun.';
+    }
+
+    document.getElementById('shop-publish-modal').classList.add('open');
+    lucide.createIcons();
+  }
+  function closeShopPublishModal() {
+    document.getElementById('shop-publish-modal').classList.remove('open');
+  }
+
+  async function submitShopPublish() {
+    const caption = document.getElementById('spm-caption').value;
+    const tiktokShopProductId = document.getElementById('spm-product-id').value.trim();
+    if (!tiktokShopProductId) {
+      showToast('Produk TikTok Shop belum di-mapping - tidak bisa publish sebagai shoppable video', 'error');
+      return;
+    }
+    try {
+      await apiFetch('/tiktok-shop/publish', {
+        method: 'POST',
+        body: JSON.stringify({ videoId: Number(videoId), caption, tiktokShopProductId }),
+      });
+      showToast('Video dikirim ke antrian publish shoppable TikTok Shop');
+      closeShopPublishModal();
+      loadShopStatus();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  function shopVideoStatusBadge(status) {
+    const map = { queued: 'idle', uploading: 'processing', processing: 'processing', published: 'active', failed: 'error' };
+    return `<span class="badge badge-${map[status] || 'idle'}"><span class="badge-dot"></span>${status}</span>`;
+  }
+  function attachmentStatusBadge(status) {
+    const map = { not_attempted: 'idle', pending: 'processing', attached: 'active', failed: 'error' };
+    return `<span class="badge badge-${map[status] || 'idle'}"><span class="badge-dot"></span>${(status || 'not_attempted').replace(/_/g, ' ')}</span>`;
+  }
+  function precheckBadge(status) {
+    const map = { not_run: 'idle', passed: 'active', failed: 'error', not_available: 'idle' };
+    return `<span class="badge badge-${map[status] || 'idle'}"><span class="badge-dot"></span>${(status || 'not_run').replace(/_/g, ' ')}</span>`;
+  }
+
+  async function loadShopStatus() {
+    try {
+      const pub = await apiFetch(`/tiktok-shop/publishes/video/${videoId}`);
+      const wrap = document.getElementById('shop-status-wrap');
+
+      if (!pub) {
+        wrap.innerHTML = `<p style="color:var(--text-muted);">Belum pernah dipublish sebagai shoppable video.</p>`;
+        stopShopPolling();
+        return;
+      }
+
+      // video_status and product_attachment_status are ALWAYS rendered as
+      // two separate rows/badges - a published video with a failed
+      // attachment must never look like a single "success" state.
+      wrap.innerHTML = `
+        <table>
+          <tr><td>Status Video</td><td>${shopVideoStatusBadge(pub.video_status)}</td></tr>
+          <tr><td>Status Product Attachment</td><td>${attachmentStatusBadge(pub.product_attachment_status)}</td></tr>
+          <tr><td>Precheck Shoppable Content</td><td>${precheckBadge(pub.precheck_status)}</td></tr>
+          <tr><td>Shop</td><td>${pub.shop_name || '-'}</td></tr>
+          <tr><td>Product ID (TikTok Shop)</td><td>${pub.tiktok_shop_product_id || '-'}</td></tr>
+          <tr><td>Product Internal</td><td>${pub.product_name || '-'}</td></tr>
+          <tr><td>TikTok Video ID</td><td>${pub.tiktok_video_id || '-'}</td></tr>
+          <tr><td>Request ID</td><td style="font-size:12px;color:var(--text-muted);">${pub.request_id || '-'}</td></tr>
+          <tr><td>Waktu Publish</td><td>${pub.published_at || '-'}</td></tr>
+          ${pub.video_error ? `<tr><td>Error Video</td><td style="color:var(--danger);">${pub.video_error}</td></tr>` : ''}
+          ${pub.attachment_error ? `<tr><td>Error Product Attachment</td><td style="color:var(--danger);">${pub.attachment_error}</td></tr>` : ''}
+        </table>
+        ${pub.video_status === 'published' && pub.product_attachment_status !== 'attached' ? `
+          <p class="card-sub" style="margin-top:10px;color:var(--warning);">
+            Video sudah published, tapi produk BELUM berhasil di-attach sebagai shoppable anchor.
+            Video ini tidak dianggap sepenuhnya berhasil sebagai shoppable video.
+          </p>` : ''}
+      `;
+
+      if (['queued', 'uploading', 'processing'].includes(pub.video_status) || pub.product_attachment_status === 'pending') {
+        ensureShopPolling();
+      } else {
+        stopShopPolling();
+      }
+    } catch (err) {
+      document.getElementById('shop-status-wrap').innerHTML =
+        `<p style="color:var(--text-muted);">Status TikTok Shop tidak tersedia (integrasi belum dikonfigurasi atau belum ada percobaan publish).</p>`;
+    }
+  }
+
+  function ensureShopPolling() {
+    if (shopPollTimer) return;
+    shopPollTimer = setInterval(loadShopStatus, 5000);
+  }
+  function stopShopPolling() {
+    if (shopPollTimer) { clearInterval(shopPollTimer); shopPollTimer = null; }
+  }
+
+  load();
+  loadTikTokStatus();
+  loadShopStatus();
+</script>
+</body>
+</html>

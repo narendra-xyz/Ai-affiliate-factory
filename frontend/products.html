@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Products - AI Affiliate Factory</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="layout" id="app-shell"></div>
+
+<template id="tpl-content">
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-header">
+      <h2>Product Hunter</h2>
+      <button class="btn" onclick="openHuntModal()"><i data-lucide="search"></i> Cari Produk Baru</button>
+    </div>
+    <p style="color:var(--text-muted);margin:0;">Agent akan menilai produk berdasarkan harga, komisi, popularitas, rating, dan potensi konten.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-header"><h2>Filter</h2></div>
+    <div class="grid grid-3">
+      <div class="field" style="margin-bottom:0;">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="">Semua</option>
+          <option value="testing">Testing</option>
+          <option value="active">Active</option>
+          <option value="paused">Paused</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Niche</label>
+        <input id="f-niche" placeholder="mis. gaming">
+      </div>
+      <div class="field" style="margin-bottom:0;display:flex;align-items:flex-end;">
+        <button class="btn" style="width:100%;justify-content:center;" onclick="loadProducts()">
+          <i data-lucide="filter"></i> Terapkan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Ranking Produk (berdasarkan profit)</h2></div>
+    <table>
+      <thead>
+        <tr><th>Produk</th><th>Niche</th><th>Videos</th><th>Views</th><th>Orders</th><th>Conv. Rate</th><th>Commission</th><th>Profit</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody id="products-tbody"></tbody>
+    </table>
+  </div>
+</template>
+
+<div class="modal-backdrop" id="hunt-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Cari Produk Baru</h3>
+      <button class="modal-close" onclick="closeHuntModal()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="field">
+      <label>Niche (opsional)</label>
+      <input id="hunt-niche" placeholder="mis. gaming, kecantikan, kesehatan">
+    </div>
+    <div class="field">
+      <label>Harga Maksimal (IDR, opsional)</label>
+      <input id="hunt-maxprice" type="number" placeholder="mis. 200000">
+    </div>
+    <div class="field">
+      <label>Jumlah Produk</label>
+      <input id="hunt-count" type="number" value="5" min="1" max="20">
+    </div>
+    <button class="btn" style="width:100%;justify-content:center;" onclick="runHunt()">
+      <i data-lucide="sparkles"></i> Jalankan Product Hunter
+    </button>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+  mountShell('/products.html', 'Products', 'Riset dan analisis produk affiliate');
+  document.getElementById('page-content').appendChild(document.getElementById('tpl-content').content.cloneNode(true));
+
+  function openHuntModal() { document.getElementById('hunt-modal').classList.add('open'); lucide.createIcons(); }
+  function closeHuntModal() { document.getElementById('hunt-modal').classList.remove('open'); }
+
+  async function runHunt() {
+    const niche = document.getElementById('hunt-niche').value || undefined;
+    const maxPriceVal = document.getElementById('hunt-maxprice').value;
+    const maxPrice = maxPriceVal ? Number(maxPriceVal) : undefined;
+    const count = Number(document.getElementById('hunt-count').value) || 5;
+    try {
+      await apiFetch('/products/hunt', { method: 'POST', body: JSON.stringify({ niche, maxPrice, count }) });
+      showToast('Product Hunter selesai mencari produk baru');
+      closeHuntModal();
+      loadProducts();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  function badge(status) {
+    return `<span class="badge badge-${status}"><span class="badge-dot"></span>${status}</span>`;
+  }
+
+  async function loadProducts() {
+    const status = document.getElementById('f-status').value;
+    const niche = document.getElementById('f-niche').value;
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (niche) params.set('niche', niche);
+
+    try {
+      const rows = await apiFetch(`/products/ranking?${params.toString()}`);
+      if (!rows) return;
+      document.getElementById('products-tbody').innerHTML = rows.map((p) => `
+        <tr>
+          <td><a href="/product-detail.html?id=${p.id}" style="color:var(--text);text-decoration:none;">${p.name}</a></td>
+          <td>${p.niche || '-'}</td>
+          <td>${p.total_videos}</td>
+          <td>${(p.total_views || 0).toLocaleString('id-ID')}</td>
+          <td>${(p.total_orders || 0).toLocaleString('id-ID')}</td>
+          <td>${p.conversion_rate}%</td>
+          <td>${formatIDR(p.commission)}</td>
+          <td style="color:${p.profit >= 0 ? 'var(--success)' : 'var(--danger)'};">${formatIDR(p.profit)}</td>
+          <td>${badge(p.status)}</td>
+          <td>
+            <div class="dropdown">
+              <button class="btn btn-secondary" onclick="this.nextElementSibling.classList.toggle('open')">
+                <i data-lucide="more-horizontal"></i>
+              </button>
+              <div class="dropdown-menu">
+                <button onclick="setStatus(${p.id},'active')">Set Active</button>
+                <button onclick="setStatus(${p.id},'paused')">Set Paused</button>
+                <button onclick="setStatus(${p.id},'rejected')">Set Rejected</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      `).join('') || `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);">Belum ada produk</td></tr>`;
+      lucide.createIcons();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function setStatus(id, status) {
+    try {
+      await apiFetch(`/products/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      showToast('Status produk diperbarui');
+      loadProducts();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.dropdown-menu.open').forEach((el) => {
+      if (!el.parentElement.contains(e.target)) el.classList.remove('open');
+    });
+  });
+
+  loadProducts();
+</script>
+</body>
+</html>
