@@ -1,0 +1,11 @@
+{
+  "_comment": "Non-model settings per agent. MODEL IDs are intentionally NOT hardcoded here - they come from environment variables (see .env.example: NINEROUTER_MODELS_<AGENT>) so nothing fake ships by default. If an agent's env var is unset, the router reports that agent as 'not_configured' instead of guessing a model id.",
+
+  "product_hunter":  { "allow_paid_fallback": false, "temperature": 0.3, "max_tokens": 1200 },
+  "trend_hunter":     { "allow_paid_fallback": false, "temperature": 0.6, "max_tokens": 1000 },
+  "script_writer":    { "allow_paid_fallback": false, "temperature": 0.8, "max_tokens": 1800 },
+  "content_agent":    { "allow_paid_fallback": false, "temperature": 0.4, "max_tokens": 800 },
+  "critic_agent":     { "allow_paid_fallback": false, "temperature": 0.2, "max_tokens": 1200 },
+  "money_agent":      { "allow_paid_fallback": false, "temperature": 0.2, "max_tokens": 1500 },
+  "command_center":   { "allow_paid_fallback": false, "temperature": 0.2, "max_tokens": 400 }
+}
