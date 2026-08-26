@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance - AI Affiliate Factory</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="layout" id="app-shell"></div>
+
+<template id="tpl-content">
+  <div class="grid grid-4" id="finance-cards" style="margin-bottom:14px;"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>Rincian per Periode</h2>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Periode</th><th>Gross Commission</th><th>AI Cost</th><th>Server Cost</th><th>Other Cost</th><th>Net Profit</th></tr>
+      </thead>
+      <tbody id="finance-tbody"></tbody>
+    </table>
+  </div>
+</template>
+
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+  mountShell('/finance.html', 'Finance', 'Net Profit = Commission - AI Cost - Server Cost - Other Cost');
+  document.getElementById('page-content').appendChild(document.getElementById('tpl-content').content.cloneNode(true));
+
+  const LABELS = { today: 'Hari Ini', last7Days: '7 Hari Terakhir', thisMonth: 'Bulan Ini', lifetime: 'Lifetime' };
+
+  async function loadFinance() {
+    try {
+      const snap = await apiFetch('/finance/snapshot');
+      if (!snap) return;
+
+      document.getElementById('finance-cards').innerHTML = Object.entries(LABELS).map(([key, label]) => `
+        <div class="card">
+          <p class="card-title">${label} - Net Profit</p>
+          <p class="card-value" style="color:${snap[key].netProfit >= 0 ? 'var(--success)' : 'var(--danger)'};">
+            ${formatIDR(snap[key].netProfit)}
+          </p>
+        </div>
+      `).join('');
+
+      document.getElementById('finance-tbody').innerHTML = Object.entries(LABELS).map(([key, label]) => `
+        <tr>
+          <td>${label}</td>
+          <td>${formatIDR(snap[key].grossCommission)}</td>
+          <td>${formatIDR(snap[key].aiCost)}</td>
+          <td>${formatIDR(snap[key].serverCost)}</td>
+          <td>${formatIDR(snap[key].otherCost)}</td>
+          <td>${formatIDR(snap[key].netProfit)}</td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  loadFinance();
+</script>
+</body>
+</html>

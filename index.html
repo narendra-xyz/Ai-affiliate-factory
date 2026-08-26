@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - AI Affiliate Factory</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="layout" id="app-shell"></div>
+
+<template id="tpl-content">
+  <div class="grid grid-4" style="margin-bottom:14px;">
+    <div class="card">
+      <p class="card-title">Video Hari Ini</p>
+      <p class="card-value" id="stat-videos-today">-</p>
+    </div>
+    <div class="card">
+      <p class="card-title">Video Bulan Ini</p>
+      <p class="card-value" id="stat-videos-month">-</p>
+    </div>
+    <div class="card">
+      <p class="card-title">Video Berhasil</p>
+      <p class="card-value" id="stat-videos-success">-</p>
+    </div>
+    <div class="card">
+      <p class="card-title">Video Gagal</p>
+      <p class="card-value" id="stat-videos-failed">-</p>
+    </div>
+  </div>
+
+  <div class="grid grid-4" style="margin-bottom:14px;">
+    <div class="card">
+      <p class="card-title">Produk Sedang Diuji</p>
+      <p class="card-value" id="stat-products-testing">-</p>
+    </div>
+    <div class="card">
+      <p class="card-title">Total Views</p>
+      <p class="card-value" id="stat-views">-</p>
+    </div>
+    <div class="card">
+      <p class="card-title">Total Clicks</p>
+      <p class="card-value" id="stat-clicks">-</p>
+    </div>
+    <div class="card">
+      <p class="card-title">Total Orders</p>
+      <p class="card-value" id="stat-orders">-</p>
+    </div>
+  </div>
+
+  <div class="grid grid-4" style="margin-bottom:14px;">
+    <div class="card">
+      <p class="card-title">Total Commission</p>
+      <p class="card-value" id="stat-commission">-</p>
+    </div>
+    <div class="card">
+      <p class="card-title">AI Cost (Bulan Ini)</p>
+      <p class="card-value" id="stat-ai-cost">-</p>
+    </div>
+    <div class="card">
+      <p class="card-title">VPS Cost (Bulan Ini)</p>
+      <p class="card-value" id="stat-server-cost">-</p>
+    </div>
+    <div class="card">
+      <p class="card-title">Other Cost (Bulan Ini)</p>
+      <p class="card-value" id="stat-other-cost">-</p>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:14px;">
+    <div class="card">
+      <p class="card-title">Net Profit (Bulan Ini)</p>
+      <p class="card-value" id="stat-profit">-</p>
+    </div>
+    <div class="card">
+      <p class="card-title">Conversion Rate</p>
+      <p class="card-value" id="stat-conversion">-</p>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:14px;">
+    <div class="card">
+      <div class="card-header"><h2>Status Server</h2></div>
+      <table>
+        <tr><td>RAM Usage</td><td id="sv-ram">-</td></tr>
+        <tr><td>CPU Load</td><td id="sv-cpu">-</td></tr>
+        <tr><td>Storage</td><td id="sv-storage">-</td></tr>
+        <tr><td>n8n</td><td id="sv-n8n">-</td></tr>
+        <tr><td>Antrian Video</td><td id="sv-queue-video">-</td></tr>
+        <tr><td>Antrian Agent</td><td id="sv-queue-agent">-</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Status Agent</h2></div>
+      <table id="agent-status-table"><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:14px;">
+    <div class="card">
+      <div class="card-header"><h2>Top Products (by profit)</h2></div>
+      <table id="top-products-table">
+        <thead><tr><th>Produk</th><th>Profit</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Top Videos (by profit)</h2></div>
+      <table id="top-videos-table">
+        <thead><tr><th>Video</th><th>Profit</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header"><h2>Traffic (30 Hari Terakhir)</h2></div>
+      <canvas id="traffic-chart" height="90"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Commission vs Net Profit (30 Hari Terakhir)</h2></div>
+      <canvas id="money-chart" height="90"></canvas>
+    </div>
+  </div>
+</template>
+
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+  mountShell('/index.html', 'Dashboard', 'Ringkasan performa sistem AI Affiliate Factory');
+  document.getElementById('page-content').appendChild(document.getElementById('tpl-content').content.cloneNode(true));
+
+  function badge(status) {
+    return `<span class="badge badge-${status}"><span class="badge-dot"></span>${status.replace(/_/g, ' ')}</span>`;
+  }
+
+  async function loadDashboard() {
+    try {
+      const summary = await apiFetch('/dashboard/summary');
+      if (!summary) return;
+
+      document.getElementById('stat-videos-today').textContent = summary.videos.today;
+      document.getElementById('stat-videos-month').textContent = summary.videos.thisMonth;
+      document.getElementById('stat-videos-success').textContent = summary.videos.success;
+      document.getElementById('stat-videos-failed').textContent = summary.videos.failed;
+      document.getElementById('stat-products-testing').textContent = summary.productsTesting;
+      document.getElementById('stat-views').textContent = summary.totals.views.toLocaleString('id-ID');
+      document.getElementById('stat-clicks').textContent = summary.totals.clicks.toLocaleString('id-ID');
+      document.getElementById('stat-orders').textContent = summary.totals.orders.toLocaleString('id-ID');
+      document.getElementById('stat-commission').textContent = formatIDR(summary.totals.commission);
+
+      const m = summary.finance.thisMonth;
+      document.getElementById('stat-ai-cost').textContent = formatIDR(m.aiCost);
+      document.getElementById('stat-server-cost').textContent = formatIDR(m.serverCost);
+      document.getElementById('stat-other-cost').textContent = formatIDR(m.otherCost);
+      document.getElementById('stat-profit').textContent = formatIDR(m.netProfit);
+
+      const r = summary.server.resources;
+      document.getElementById('sv-ram').textContent = `${r.ramUsedMb} MB / ${r.ramTotalMb} MB`;
+      document.getElementById('sv-cpu').textContent = `${r.cpuLoadPercent}%`;
+      const s = summary.server.storage;
+      document.getElementById('sv-storage').textContent = s.totalGb
+        ? `${s.usedPercent}% used (${s.freeGb} GB free)`
+        : 'unavailable';
+
+      const n8n = summary.server.n8n;
+      document.getElementById('sv-n8n').innerHTML = n8n.connected
+        ? `<span class="badge badge-active"><span class="badge-dot"></span>connected</span>`
+        : `<span class="badge badge-error"><span class="badge-dot"></span>disconnected</span>`;
+
+      const tbody = document.querySelector('#agent-status-table tbody');
+      tbody.innerHTML = summary.agents
+        .map((a) => `<tr><td>${a.display_name}</td><td>${badge(a.status)}</td><td>${a.current_task || a.last_task || '-'}</td></tr>`)
+        .join('');
+
+      lucide.createIcons();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function loadChart() {
+    try {
+      const ts = await apiFetch('/dashboard/timeseries?days=30');
+      if (!ts) return;
+      const labels = ts.series.map((r) => r.date);
+      const axisOpts = { x: { ticks: { color: '#8b93a3' } }, y: { ticks: { color: '#8b93a3' } } };
+
+      new Chart(document.getElementById('traffic-chart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Views', data: ts.series.map((r) => r.views), borderColor: '#5b8cff', tension: 0.3 },
+            { label: 'Clicks', data: ts.series.map((r) => r.clicks), borderColor: '#34c78a', tension: 0.3 },
+            { label: 'Orders', data: ts.series.map((r) => r.orders), borderColor: '#e0a940', tension: 0.3 },
+          ],
+        },
+        options: { plugins: { legend: { labels: { color: '#8b93a3' } } }, scales: axisOpts },
+      });
+
+      new Chart(document.getElementById('money-chart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Commission', data: ts.series.map((r) => r.commission), borderColor: '#34c78a', tension: 0.3 },
+            { label: 'Net Profit', data: ts.series.map((r) => r.profit), borderColor: '#5b8cff', tension: 0.3 },
+          ],
+        },
+        options: { plugins: { legend: { labels: { color: '#8b93a3' } } }, scales: axisOpts },
+      });
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function loadQueueStatus() {
+    try {
+      const status = await apiFetch('/system/status');
+      if (!status) return;
+      document.getElementById('sv-queue-video').textContent =
+        `${status.queues.video.running} berjalan, ${status.queues.video.queued} menunggu (maks ${status.queues.video.concurrency})`;
+      document.getElementById('sv-queue-agent').textContent =
+        `${status.queues.agent.running} berjalan, ${status.queues.agent.queued} menunggu (maks ${status.queues.agent.concurrency})`;
+    } catch (err) {
+      // non-fatal, queue status is secondary info
+    }
+  }
+
+  async function loadTop() {
+    try {
+      const top = await apiFetch('/dashboard/top');
+      if (!top) return;
+
+      document.getElementById('stat-conversion').textContent = `${top.conversionRate}%`;
+
+      document.querySelector('#top-products-table tbody').innerHTML = top.topProducts.length
+        ? top.topProducts.map((p) => `
+            <tr>
+              <td><a href="/product-detail.html?id=${p.id}" style="color:var(--text);text-decoration:none;">${p.name}</a></td>
+              <td style="color:${p.profit >= 0 ? 'var(--success)' : 'var(--danger)'};">${formatIDR(p.profit)}</td>
+            </tr>
+          `).join('')
+        : `<tr><td colspan="2" style="text-align:center;color:var(--text-muted);">Belum ada data</td></tr>`;
+
+      document.querySelector('#top-videos-table tbody').innerHTML = top.topVideos.length
+        ? top.topVideos.map((v) => `
+            <tr>
+              <td><a href="/video-detail.html?id=${v.id}" style="color:var(--text);text-decoration:none;">${v.title || '(untitled)'}</a></td>
+              <td style="color:${v.profit >= 0 ? 'var(--success)' : 'var(--danger)'};">${formatIDR(v.profit)}</td>
+            </tr>
+          `).join('')
+        : `<tr><td colspan="2" style="text-align:center;color:var(--text-muted);">Belum ada data</td></tr>`;
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  loadDashboard();
+  loadChart();
+  loadQueueStatus();
+  loadTop();
+  setInterval(loadQueueStatus, 15000);
+</script>
+</body>
+</html>
