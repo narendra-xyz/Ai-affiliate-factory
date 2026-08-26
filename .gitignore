@@ -1,0 +1,10 @@
+node_modules/
+.env
+backend/db/*.sqlite
+backend/db/*.sqlite-journal
+backend/db/*.sqlite-wal
+backend/db/*.sqlite-shm
+backend/storage/videos/*
+!backend/storage/videos/.gitkeep
+*.log
+.DS_Store

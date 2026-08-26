@@ -1,0 +1,28 @@
+{
+  "name": "ai-affiliate-factory",
+  "version": "1.0.0",
+  "description": "Agentic AI system for affiliate content research, production, testing, and analytics.",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "db:init": "node backend/db/init.js && node backend/db/migrate.js",
+    "db:migrate": "node backend/db/migrate.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "zod": "^3.23.8",
+    "check-disk-space": "^3.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "UNLICENSED"
+}
